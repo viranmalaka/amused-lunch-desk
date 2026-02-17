@@ -121,12 +121,40 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
-exports.Prisma.PostScalarFieldEnum = {
+exports.Prisma.PreferenceScalarFieldEnum = {
   id: 'id',
   name: 'name',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  createdById: 'createdById'
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.MenuScalarFieldEnum = {
+  id: 'id',
+  date: 'date',
+  mealType: 'mealType',
+  published: 'published',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.MenuItemScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  menuId: 'menuId',
+  preferenceId: 'preferenceId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.OrderScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  date: 'date',
+  mealType: 'mealType',
+  menuItemId: 'menuItemId',
+  preferenceId: 'preferenceId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.AccountScalarFieldEnum = {
@@ -141,8 +169,7 @@ exports.Prisma.AccountScalarFieldEnum = {
   token_type: 'token_type',
   scope: 'scope',
   id_token: 'id_token',
-  session_state: 'session_state',
-  refresh_token_expires_in: 'refresh_token_expires_in'
+  session_state: 'session_state'
 };
 
 exports.Prisma.SessionScalarFieldEnum = {
@@ -157,7 +184,9 @@ exports.Prisma.UserScalarFieldEnum = {
   name: 'name',
   email: 'email',
   emailVerified: 'emailVerified',
-  image: 'image'
+  image: 'image',
+  role: 'role',
+  defaultPreferenceId: 'defaultPreferenceId'
 };
 
 exports.Prisma.VerificationTokenScalarFieldEnum = {
@@ -180,10 +209,21 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+exports.MealType = exports.$Enums.MealType = {
+  BREAKFAST: 'BREAKFAST',
+  LUNCH: 'LUNCH'
+};
 
+exports.Role = exports.$Enums.Role = {
+  ADMIN: 'ADMIN',
+  EMPLOYEE: 'EMPLOYEE'
+};
 
 exports.Prisma.ModelName = {
-  Post: 'Post',
+  Preference: 'Preference',
+  Menu: 'Menu',
+  MenuItem: 'MenuItem',
+  Order: 'Order',
   Account: 'Account',
   Session: 'Session',
   User: 'User',
