@@ -1,11 +1,37 @@
 import { type Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
 import { MealType } from "generated/prisma";
 
 interface Props {
   params: Promise<{ date: string }>;
+}
+
+// Common bot/crawler user agents
+const BOT_USER_AGENTS = [
+  "bot",
+  "crawler",
+  "spider",
+  "slackbot",
+  "twitterbot",
+  "facebookexternalhit",
+  "linkedinbot",
+  "whatsapp",
+  "telegrambot",
+  "discordbot",
+  "skypeuripreview",
+  "microsoft teams",
+  "msteams",
+  "outlook",
+];
+
+function isBot(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  return BOT_USER_AGENTS.some((bot) => ua.includes(bot));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -27,7 +53,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const breakfast = menus.find((m) => m.mealType === MealType.BREAKFAST);
   const lunch = menus.find((m) => m.mealType === MealType.LUNCH);
 
-  // Build a nice description for Teams preview
   const breakfastItem = breakfast?.items[0]?.name;
   const lunchItems = lunch?.items.map((i) => `• ${i.name}`).join("\n") ?? "";
 
@@ -56,22 +81,108 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `🍽️ Menu for ${dateStr}`,
       description,
     },
-    other: {
-      // Additional meta for better Teams/Slack unfurling
-      "og:locale": "en_US",
-    },
   };
 }
 
 export default async function MenuPage({ params }: Props) {
   const { date: dateParam } = await params;
+  const headersList = await headers();
+  const userAgent = headersList.get("user-agent");
+
+  // If it's a bot/crawler, show the page content so they can read meta tags
+  if (isBot(userAgent)) {
+    const date = new Date(dateParam);
+    date.setUTCHours(0, 0, 0, 0);
+
+    const dateStr = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const menus = await db.menu.findMany({
+      where: { date, published: true },
+      include: { items: { include: { preference: true } } },
+    });
+
+    const breakfast = menus.find((m) => m.mealType === MealType.BREAKFAST);
+    const lunch = menus.find((m) => m.mealType === MealType.LUNCH);
+
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-100 p-4">
+        <div className="mx-auto max-w-lg">
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold text-gray-800">🍽️ Lunch Desk</h1>
+            <p className="mt-1 text-gray-600">{dateStr}</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="mb-4 text-xl font-semibold text-gray-800">
+                🌅 Breakfast
+              </h2>
+              {breakfast && breakfast.items.length > 0 ? (
+                <ul className="space-y-2">
+                  {breakfast.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-lg bg-orange-50 p-3 text-gray-700"
+                    >
+                      {item.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">Menu not available yet</p>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="mb-4 text-xl font-semibold text-gray-800">
+                ☀️ Lunch
+              </h2>
+              {lunch && lunch.items.length > 0 ? (
+                <ul className="space-y-2">
+                  {lunch.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-lg bg-orange-50 p-3 text-gray-700"
+                    >
+                      {item.name}
+                      {item.preference && (
+                        <span className="ml-2 text-sm text-gray-500">
+                          ({item.preference.name})
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">Menu not available yet</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 text-center">
+            <Link
+              href="/"
+              className="inline-block rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600"
+            >
+              Order Now →
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // For real users, check auth and redirect
   const session = await auth();
 
-  // If user is logged in, redirect to order page with date
   if (session?.user) {
     redirect(`/?date=${dateParam}`);
   }
 
-  // If not logged in, redirect to login with callback to order page
   redirect(`/login?callbackUrl=${encodeURIComponent(`/?date=${dateParam}`)}`);
 }
