@@ -21,11 +21,11 @@ function getWeekdayDates(count: number): string[] {
   return dates;
 }
 
-function CopyLinkButton({ date }: { date: string }) {
+function CopyLinkButton({ date, mealType }: { date: string; mealType: "breakfast" | "lunch" }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const url = `${window.location.origin}/menu/${date}`;
+    const url = `${window.location.origin}/menu/${date}/${mealType}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -36,9 +36,9 @@ function CopyLinkButton({ date }: { date: string }) {
       variant="outline"
       size="sm"
       onClick={handleCopy}
-      className="gap-1"
+      className="gap-1 text-xs"
     >
-      {copied ? "✓ Copied!" : "📋 Copy Link for Teams"}
+      {copied ? "✓ Copied!" : "📋 Copy Link"}
     </Button>
   );
 }
@@ -95,11 +95,16 @@ function BreakfastEditor({ date }: { date: string }) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span>🌅 Breakfast</span>
-          {menu?.published && (
-            <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
-              Published
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {menu?.published && (
+              <>
+                <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
+                  Published
+                </span>
+                <CopyLinkButton date={date} mealType="breakfast" />
+              </>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -215,11 +220,16 @@ function LunchEditor({ date }: { date: string }) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span>☀️ Lunch</span>
-          {menu?.published && (
-            <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
-              Published
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {menu?.published && (
+              <>
+                <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
+                  Published
+                </span>
+                <CopyLinkButton date={date} mealType="lunch" />
+              </>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -299,35 +309,6 @@ function LunchEditor({ date }: { date: string }) {
   );
 }
 
-function ShareSection({ date }: { date: string }) {
-  const { data: breakfastMenu } = api.menu.getByDateAndType.useQuery({
-    date,
-    mealType: MealType.BREAKFAST,
-  });
-  const { data: lunchMenu } = api.menu.getByDateAndType.useQuery({
-    date,
-    mealType: MealType.LUNCH,
-  });
-
-  const hasPublishedMenu = breakfastMenu?.published === true || lunchMenu?.published === true;
-
-  if (!hasPublishedMenu) return null;
-
-  return (
-    <Card className="border-orange-200 bg-orange-50">
-      <CardContent className="flex items-center justify-between p-4">
-        <div>
-          <p className="font-medium text-gray-800">Share menu with your team</p>
-          <p className="text-sm text-gray-600">
-            Copy the link and paste it in Teams for a nice preview
-          </p>
-        </div>
-        <CopyLinkButton date={date} />
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function AdminMenuPage() {
   const dates = getWeekdayDates(15);
   const [selectedDate, setSelectedDate] = useState(dates[0]!);
@@ -361,8 +342,6 @@ export default function AdminMenuPage() {
           );
         })}
       </div>
-
-      <ShareSection date={selectedDate} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <BreakfastEditor date={selectedDate} />
