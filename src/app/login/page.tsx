@@ -1,68 +1,68 @@
 "use client";
 
-import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "~/components/ui/input";
+import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
+/**
+ * Error messages for authentication failures
+ */
+const errorMessages: Record<string, string> = {
+  OAuthSignin: "Error starting the sign-in process. Please try again.",
+  OAuthCallback: "Error during authentication callback. Please try again.",
+  OAuthCreateAccount: "Could not create your account. Please contact support.",
+  Callback: "Authentication callback error. Please try again.",
+  OAuthAccountNotLinked: "This email is already linked to another account.",
+  SessionRequired: "Please sign in to access this page.",
+  Default: "An error occurred during sign-in. Please try again.",
+};
+
 function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const error = searchParams.get("error");
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  const errorMessage = error
+    ? errorMessages[error] ?? errorMessages.Default
+    : null;
 
-    const result = await signIn("credentials", {
-      email,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid email or user not found. Please contact admin.");
-    } else {
-      router.push(callbackUrl);
-      router.refresh();
-    }
+  const handleSignIn = () => {
+    signIn("azure-ad", { callbackUrl });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          Email Address
-        </label>
-        <Input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@company.com"
-          className="mt-1"
-          required
-        />
-      </div>
-
-      {error && (
-        <p className="text-sm text-red-600">{error}</p>
+    <div className="space-y-6">
+      {errorMessage && (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600"
+          role="alert"
+        >
+          {errorMessage}
+        </div>
       )}
 
       <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-orange-500 px-4 py-3 font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
+        onClick={handleSignIn}
+        className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#2F2F2F] px-4 py-3 font-semibold text-white transition hover:bg-[#1F1F1F]"
       >
-        {loading ? "Signing in..." : "Sign In"}
+        <svg
+          className="h-5 w-5"
+          viewBox="0 0 21 21"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+          <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+          <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+          <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+        </svg>
+        Sign in with Microsoft
       </button>
-    </form>
+
+      <p className="text-center text-xs text-gray-500">
+        Use your corporate Microsoft account to sign in.
+      </p>
+    </div>
   );
 }
 
@@ -78,10 +78,6 @@ export default function LoginPage() {
         <Suspense fallback={<div className="py-4 text-center">Loading...</div>}>
           <LoginForm />
         </Suspense>
-
-        <p className="mt-6 text-center text-xs text-gray-500">
-          Don&apos;t have an account? Contact your admin to get added.
-        </p>
       </div>
     </main>
   );

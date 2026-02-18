@@ -16,33 +16,11 @@ async function main() {
 
   console.log("✅ Created preferences:", preferences.join(", "));
 
-  // Create a test admin user
-  const adminEmail = "admin@test.com";
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
-    create: {
-      email: adminEmail,
-      name: "Test Admin",
-      role: "ADMIN",
-    },
-  });
-
-  console.log("✅ Created admin user:", adminEmail);
-
-  // Create a test employee user
-  const employeeEmail = "employee@test.com";
-  await prisma.user.upsert({
-    where: { email: employeeEmail },
-    update: {},
-    create: {
-      email: employeeEmail,
-      name: "Test Employee",
-      role: "EMPLOYEE",
-    },
-  });
-
-  console.log("✅ Created employee user:", employeeEmail);
+  // Note: Users are now auto-created on first Azure AD login
+  // To make a user an admin, update their role in the database:
+  // UPDATE "User" SET role = 'ADMIN' WHERE email = 'your-email@company.com';
+  console.log("ℹ️  Users will be auto-created on first Azure AD login with EMPLOYEE role");
+  console.log("ℹ️  To promote a user to admin, update their role in the database");
 }
 
 main()
