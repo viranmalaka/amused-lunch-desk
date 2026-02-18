@@ -26,8 +26,8 @@ function LoginForm() {
     ? errorMessages[error] ?? errorMessages.Default
     : null;
 
-  const handleSignIn = () => {
-    signIn("azure-ad", { callbackUrl });
+  const handleSignIn = async () => {
+    await signIn("azure-ad", { callbackUrl });
   };
 
   return (

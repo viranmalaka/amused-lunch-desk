@@ -28,10 +28,10 @@ export const authConfig = {
       if (session.user) {
         session.user.id = user.id
         const dbUser = await db.user.findUnique({
-          where: { email: user.email! },
+          where: { email: user.email ?? "" },
           select: { role: true }
         })
-        session.user.role = dbUser?.role || 'EMPLOYEE'
+        session.user.role = dbUser?.role ?? 'EMPLOYEE'
       }
       return session
     },
