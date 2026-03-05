@@ -13,6 +13,11 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  // Force password change for users with temporary passwords
+  if (session.user.tempPassword) {
+    redirect("/change-password");
+  }
+
   return (
     <>
       <Nav

@@ -62,6 +62,15 @@ function LoginForm() {
       <p className="text-center text-xs text-gray-500">
         Use your corporate Microsoft account to sign in.
       </p>
+
+      <div className="mt-4 border-t pt-4">
+        <a
+          href="/admin-login"
+          className="block text-center text-sm text-gray-500 hover:text-gray-700"
+        >
+          Admin Login →
+        </a>
+      </div>
     </div>
   );
 }

@@ -118,6 +118,85 @@ export const menuRouter = createTRPCRouter({
 
       return menu;
     }),
+  // Check for pre-orders that won't be matched when publishing
+  getUnmatchedPreferences: protectedProcedure
+    .input(z.object({ menuId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== "ADMIN") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const menu = await ctx.db.menu.findUnique({
+        where: { id: input.menuId },
+        include: { items: { include: { preference: true } } },
+      });
+
+      if (!menu) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Menu not found" });
+      }
+
+      // Get preference IDs covered by menu items
+      const coveredPreferenceIds = new Set(
+        menu.items
+          .map((item) => item.preferenceId)
+          .filter((id): id is string => id !== null),
+      );
+
+      // Find orders for this date/mealType that have a preference but no menu item yet
+      const unmatchedOrders = await ctx.db.order.findMany({
+        where: {
+          date: menu.date,
+          mealType: menu.mealType,
+          preferenceId: { not: null },
+          menuItemId: null,
+        },
+        include: {
+          preference: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      // Group by preference, only keep those NOT covered by any menu item
+      const warnings: {
+        preferenceId: string;
+        preferenceName: string;
+        userCount: number;
+        users: { name: string | null; email: string | null }[];
+      }[] = [];
+
+      const grouped = new Map<
+        string,
+        { preferenceName: string; users: { name: string | null; email: string | null }[] }
+      >();
+
+      for (const order of unmatchedOrders) {
+        if (!order.preference || coveredPreferenceIds.has(order.preferenceId!)) continue;
+
+        const key = order.preferenceId!;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            preferenceName: order.preference.name,
+            users: [],
+          });
+        }
+        grouped.get(key)!.users.push({
+          name: order.user.name,
+          email: order.user.email,
+        });
+      }
+
+      for (const [preferenceId, data] of grouped) {
+        warnings.push({
+          preferenceId,
+          preferenceName: data.preferenceName,
+          userCount: data.users.length,
+          users: data.users,
+        });
+      }
+
+      return warnings;
+    }),
+
 
   addItem: protectedProcedure
     .input(z.object({

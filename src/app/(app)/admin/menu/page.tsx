@@ -43,6 +43,143 @@ function CopyLinkButton({ date, mealType }: { date: string; mealType: "breakfast
   );
 }
 
+function PublishWarningDialog({
+  menuId,
+  isPublished,
+  onConfirm,
+  isPending,
+}: {
+  menuId: string;
+  isPublished: boolean;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  const [showWarning, setShowWarning] = useState(false);
+  const { data: warnings, isLoading, refetch, isFetching } = api.menu.getUnmatchedPreferences.useQuery(
+    { menuId },
+    { enabled: showWarning && !isPublished },
+  );
+
+  const handleClick = () => {
+    refetch();
+    if (isPublished) {
+      // Unpublish directly, no warning needed
+      onConfirm();
+      return;
+    }
+    setShowWarning(true);
+  };
+
+  const handleConfirmPublish = () => {
+    setShowWarning(false);
+    onConfirm();
+  };
+
+  return (
+    <>
+      <Button
+        variant={isPublished ? "outline" : "default"}
+        onClick={handleClick}
+        disabled={isPending}
+        className="w-full"
+      >
+        {isPublished ? "Unpublish" : "Publish Menu"}
+      </Button>
+
+      {showWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            {isLoading || isFetching ? (
+              <p className="text-center text-gray-500">Checking pre-orders...</p>
+            ) : warnings && warnings.length > 0 ? (
+              <>
+                <div className="mb-4 flex items-start gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Unmatched Pre-orders
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Some users pre-ordered preferences that have no matching menu item.
+                      Their orders won&apos;t be auto-assigned.
+                    </p>
+                  </div>
+                </div>
+                <div className="mb-4 space-y-3">
+                  {warnings.map((w) => (
+                    <div
+                      key={w.preferenceId}
+                      className="rounded-lg border border-amber-200 bg-amber-50 p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-amber-800">
+                          {w.preferenceName}
+                        </span>
+                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                          {w.userCount} {w.userCount === 1 ? "user" : "users"}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-sm text-amber-700">
+                        {w.users.map((u, i) => (
+                          <span key={i}>
+                            {u.name ?? u.email ?? "Unknown"}
+                            {i < w.users.length - 1 ? ", " : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowWarning(false)}
+                    className="flex-1"
+                  >
+                    Go Back
+                  </Button>
+                  <Button
+                    onClick={handleConfirmPublish}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600"
+                  >
+                    Publish Anyway
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-4 flex items-start gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Ready to Publish
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      All pre-orders have matching menu items. Good to go.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowWarning(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleConfirmPublish} className="flex-1">
+                    Publish
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function BreakfastEditor({ date }: { date: string }) {
   const utils = api.useUtils();
   const { data: menu, isLoading } = api.menu.getByDateAndType.useQuery({
@@ -148,16 +285,14 @@ function BreakfastEditor({ date }: { date: string }) {
               </Button>
             </div>
 
-            <Button
-              variant={menu.published ? "outline" : "default"}
-              onClick={() =>
+            <PublishWarningDialog
+              menuId={menu.id}
+              isPublished={menu.published}
+              onConfirm={() =>
                 publishMenu.mutate({ menuId: menu.id, published: !menu.published })
               }
-              disabled={publishMenu.isPending}
-              className="w-full"
-            >
-              {menu.published ? "Unpublish" : "Publish Menu"}
-            </Button>
+              isPending={publishMenu.isPending}
+            />
           </>
         )}
       </CardContent>
@@ -292,16 +427,14 @@ function LunchEditor({ date }: { date: string }) {
               </Button>
             </div>
 
-            <Button
-              variant={menu.published ? "outline" : "default"}
-              onClick={() =>
+            <PublishWarningDialog
+              menuId={menu.id}
+              isPublished={menu.published}
+              onConfirm={() =>
                 publishMenu.mutate({ menuId: menu.id, published: !menu.published })
               }
-              disabled={publishMenu.isPending}
-              className="w-full"
-            >
-              {menu.published ? "Unpublish" : "Publish Menu"}
-            </Button>
+              isPending={publishMenu.isPending}
+            />
           </>
         )}
       </CardContent>

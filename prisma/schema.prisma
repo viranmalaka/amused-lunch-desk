@@ -135,6 +135,11 @@ model User {
   image         String?
   role          Role      @default(EMPLOYEE)
 
+  // Password auth fields (for users who can't use AD)
+  password             String?   // Hashed password
+  tempPassword         Boolean   @default(false) // If true, user must change password on login
+  passwordUpdatedAt    DateTime?
+
   // A user can set a default preference for quick selection
   defaultPreference   Preference? @relation(fields: [defaultPreferenceId], references: [id])
   defaultPreferenceId String?

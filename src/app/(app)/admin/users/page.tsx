@@ -14,6 +14,8 @@ export default function AdminUsersPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<"ADMIN" | "EMPLOYEE">("EMPLOYEE");
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
+  const [tempPassword, setTempPassword] = useState("");
 
   const createUser = api.user.create.useMutation({
     onSuccess: () => {
@@ -25,21 +27,35 @@ export default function AdminUsersPage() {
   });
 
   const updateRole = api.user.updateRole.useMutation({
-    onSuccess: () => {
-      void utils.user.getAll.invalidate();
-    },
+    onSuccess: () => void utils.user.getAll.invalidate(),
   });
 
   const deleteUser = api.user.delete.useMutation({
+    onSuccess: () => void utils.user.getAll.invalidate(),
+  });
+
+  const setTempPasswordMutation = api.user.setTempPassword.useMutation({
     onSuccess: () => {
       void utils.user.getAll.invalidate();
+      setPasswordUserId(null);
+      setTempPassword("");
     },
+  });
+
+  const clearPassword = api.user.clearPassword.useMutation({
+    onSuccess: () => void utils.user.getAll.invalidate(),
   });
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail || !newName) return;
     createUser.mutate({ email: newEmail, name: newName, role: newRole });
+  };
+
+  const handleSetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordUserId || tempPassword.length < 6) return;
+    setTempPasswordMutation.mutate({ userId: passwordUserId, password: tempPassword });
   };
 
   return (
@@ -83,12 +99,48 @@ export default function AdminUsersPage() {
             </Button>
           </form>
           {createUser.error && (
-            <p className="mt-2 text-sm text-red-600">
-              {createUser.error.message}
-            </p>
+            <p className="mt-2 text-sm text-red-600">{createUser.error.message}</p>
           )}
         </CardContent>
       </Card>
+
+      {/* Set Temporary Password Modal */}
+      {passwordUserId && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-800">Set Temporary Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSetPassword} className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Temporary password (min 6 chars)"
+                value={tempPassword}
+                onChange={(e) => setTempPassword(e.target.value)}
+                className="flex-1"
+                minLength={6}
+                required
+              />
+              <Button type="submit" disabled={setTempPasswordMutation.isPending}>
+                {setTempPasswordMutation.isPending ? "Setting..." : "Set Password"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setPasswordUserId(null);
+                  setTempPassword("");
+                }}
+              >
+                Cancel
+              </Button>
+            </form>
+            <p className="mt-2 text-xs text-orange-700">
+              User will be required to change this password on first login.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -107,11 +159,18 @@ export default function AdminUsersPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{user.name}</p>
                     <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                    {user.defaultPreference && (
-                      <p className="text-xs text-gray-400">
-                        Preference: {user.defaultPreference.name}
-                      </p>
-                    )}
+                    <div className="flex gap-2 text-xs">
+                      {user.defaultPreference && (
+                        <span className="text-gray-400">
+                          Preference: {user.defaultPreference.name}
+                        </span>
+                      )}
+                      {user.password && (
+                        <span className={user.tempPassword ? "text-orange-600" : "text-green-600"}>
+                          {user.tempPassword ? "🔑 Temp password" : "🔐 Password set"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Select
@@ -127,6 +186,29 @@ export default function AdminUsersPage() {
                       <option value="EMPLOYEE">Employee</option>
                       <option value="ADMIN">Admin</option>
                     </Select>
+                    {user.password ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Clear password? User will need AD login.")) {
+                            clearPassword.mutate({ userId: user.id });
+                          }
+                        }}
+                        title="Clear password"
+                      >
+                        🔓
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPasswordUserId(user.id)}
+                        title="Set temporary password"
+                      >
+                        🔑
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
